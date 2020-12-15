@@ -1,0 +1,86 @@
+﻿@page "/ChestItems"
+@using Data
+@inject ChestItemsDataService ItemData
+
+<h1>ChestItems</h1>
+<p>チェストの中身を取得します。</p>
+
+<div class="mt-3">
+    <button type="button" class="btn btn-outline-primary" @onclick="GetItem">アイテムの取得</button>
+</div>
+
+@if (chestFound == false)
+{
+    <div class="alert alert-danger mt-3" role="alert">
+        チェストが見つかりませんでした。<br/>
+        チェストの座標が正しいか、または Minecraft サーバの状態を確かめてください。
+    </div>
+}
+
+@if (items == null)
+{
+    <div class="mt-3">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>スロット</th>
+                    <th>アイテム名</th>
+                    <th>数量</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+}
+else
+{
+    <div class="mt-3">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>スロット</th>
+                    <th>アイテム名</th>
+                    <th>数量</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in items)
+                {
+                    <tr>
+                        <td>@item.ItemSlot</td>
+                        <td>@item.ItemID</td>
+                        <td>@item.ItemCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code{
+    static IPAddress ipaddress = IPAddress.Parse("127.0.0.1");
+    static ushort port = 25575;
+    static string password = "minecraft";
+    static RCON rcon = new RCON(ipaddress, port, password);
+
+    private string command = $"/data get block 339 66 671 Items";
+
+    private ChestItems[] items;
+    private bool chestFound = true;
+
+    private async Task GetItem()
+    {
+        await rcon.ConnectAsync();
+        var result = await rcon.SendCommandAsync(command);
+
+        if (result.Contains("not"))
+        {
+            chestFound = false;
+            return;
+        }
+        else
+            chestFound = true;
+
+        ItemData.Extraction(result);
+        items = await ItemData.AsyncExtraction();
+    }
+}
